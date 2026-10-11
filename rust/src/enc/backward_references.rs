@@ -224,7 +224,7 @@ fn create_backward_references<H: HasherImpl, const COMPOUND: bool>(
                     let mut r = common.num_base64_regions;
                     while r > 0 {
                         r -= 1;
-                        let prev_start = common.base64_regions[r].start_literal_pos;
+                        let prev_start = common.base64_regions[r].last_start_pos;
                         let prev_length = common.base64_regions[r].length;
                         if prev_length != length {
                             continue;
@@ -257,13 +257,14 @@ fn create_backward_references<H: HasherImpl, const COMPOUND: bool>(
                     *num_literals += insert_length;
                     insert_length = 0;
                     position = scan_pos;
-                    // NB: the matched region must keep describing its own
-                    // literals: the duplicate is emitted as a copy (no
-                    // literals).  The C library used to move the region into
-                    // the copy, which mapped it onto the following
+                    // NB: `start_literal_pos` must keep describing the
+                    // region's literals: the duplicate is emitted as a copy
+                    // (no literals).  The C library used to move the region
+                    // into the copy, which mapped it onto the following
                     // (non-base64) literals and produced invalid streams
                     // (fixed in c/enc/backward_references_inc.h as well).
-                    let _ = matched_region_idx;
+                    // Only remember the occurrence for later duplicates.
+                    common.base64_regions[matched_region_idx].last_start_pos = start_pos;
                     apply_random_heuristics = position + 2 * copy_len + random_heuristics_window_size;
                     if common.num_base64_regions < params.max_base64_regions {
                         next_base64_pos = find_next_base64_trigger(ringbuffer, ringbuffer_mask, position, pos_end);
@@ -275,6 +276,7 @@ fn create_backward_references<H: HasherImpl, const COMPOUND: bool>(
                 if length >= params.min_base64_region_len && length > 0 {
                     let idx = common.num_base64_regions;
                     common.base64_regions[idx].start_literal_pos = start_pos;
+                    common.base64_regions[idx].last_start_pos = start_pos;
                     common.base64_regions[idx].length = length;
                     common.num_base64_regions += 1;
                     insert_length += scan_pos - position;
@@ -542,6 +544,7 @@ fn create_backward_references_opt<H: HasherImpl, const COMPOUND: bool>(
             if length > 0 {
                 let idx = common.num_base64_regions;
                 common.base64_regions[idx].start_literal_pos = start_pos;
+                common.base64_regions[idx].last_start_pos = start_pos;
                 common.base64_regions[idx].length = length;
                 common.num_base64_regions += 1;
             }

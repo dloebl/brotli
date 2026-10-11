@@ -171,6 +171,7 @@ static void MapBase64RegionsToLiteralPositions(
     }
     out_regions[r].start_literal_pos = curr_lit_pos;
     out_regions[r].length = in_regions[r].length;
+    out_regions[r].last_start_pos = curr_lit_pos;
   }
 }
 

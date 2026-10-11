@@ -71,6 +71,9 @@ pub struct BrotliEncoderParams {
 pub struct Base64Region {
     pub start_literal_pos: usize,
     pub length: usize,
+    /// Start of the most recent occurrence (initially `start_literal_pos`);
+    /// duplicates are emitted as copies of it.
+    pub last_start_pos: usize,
 }
 /// `kIsBase64` (backward_references.c): 1 for base64 alphabet bytes
 /// (`A-Z a-z 0-9 + /`).

@@ -199,6 +199,7 @@ fn map_base64_regions_to_literal_positions(
             curr_ring_pos = curr_ring_pos.wrapping_add(insert_len + cmd.copy_len() as usize);
         }
         out_regions[r].start_literal_pos = curr_lit_pos;
+        out_regions[r].last_start_pos = curr_lit_pos;
         out_regions[r].length = region.length;
     }
 }

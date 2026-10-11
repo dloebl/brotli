@@ -803,7 +803,7 @@ fn random_regions(rng: &mut Rng, b: &SynthBlock, num_literals: usize) -> Vec<Bas
         };
         let length = rng.range(1, (num_literals.max(1) as u64).min(20000)) as usize;
         p += length;
-        v.push(Base64Region { start_literal_pos: start, length });
+        v.push(Base64Region { start_literal_pos: start, length, last_start_pos: start });
     }
     v
 }

@@ -31,6 +31,9 @@ extern "C" {
 typedef struct {
   size_t start_literal_pos;
   size_t length;
+  /* Start of the most recent occurrence (initially start_literal_pos);
+     duplicates are emitted as copies of it. */
+  size_t last_start_pos;
 } Base64Region;
 
 typedef struct {

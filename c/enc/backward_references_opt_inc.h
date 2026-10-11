@@ -79,6 +79,8 @@ static BROTLI_NOINLINE void EXPORT_FN(CreateBackwardReferences)(
         hasher->common.base64_regions[hasher->common.num_base64_regions]
             .start_literal_pos = start_pos;
         hasher->common.base64_regions[hasher->common.num_base64_regions]
+            .last_start_pos = start_pos;
+        hasher->common.base64_regions[hasher->common.num_base64_regions]
             .length = length;
         hasher->common.num_base64_regions++;
       }

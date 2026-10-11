@@ -90,7 +90,7 @@ static BROTLI_NOINLINE void EXPORT_FN(CreateBackwardReferences)(
         while (r > 0) {
           --r;
           size_t prev_start =
-              hasher->common.base64_regions[r].start_literal_pos;
+              hasher->common.base64_regions[r].last_start_pos;
           size_t prev_length = hasher->common.base64_regions[r].length;
           if (prev_length != length) {
             continue;
@@ -126,11 +126,13 @@ static BROTLI_NOINLINE void EXPORT_FN(CreateBackwardReferences)(
         *num_literals += insert_length;
         insert_length = 0;
         position = scan_pos;
-        /* NB: the matched region must keep describing its own literals: the
-           duplicate is emitted as a copy (no literals), and a region moved
-           into a copy would be mapped onto the literals following it, forcing
-           non-base64 literals into the base64 block (invalid stream). */
-        (void)matched_region_idx;
+        /* NB: start_literal_pos must keep describing the region's literals:
+           the duplicate is emitted as a copy (no literals); a region moved
+           into the copy would be mapped onto the literals following it,
+           forcing non-base64 literals into the base64 block (invalid
+           stream).  Only remember the occurrence for later duplicates. */
+        hasher->common.base64_regions[matched_region_idx].last_start_pos =
+            start_pos;
         apply_random_heuristics =
             position + 2 * copy_len + random_heuristics_window_size;
         if (hasher->common.num_base64_regions < params->max_base64_regions) {
@@ -144,6 +146,8 @@ static BROTLI_NOINLINE void EXPORT_FN(CreateBackwardReferences)(
       if (length >= params->min_base64_region_len && length > 0) {
         hasher->common.base64_regions[hasher->common.num_base64_regions]
             .start_literal_pos = start_pos;
+        hasher->common.base64_regions[hasher->common.num_base64_regions]
+            .last_start_pos = start_pos;
         hasher->common.base64_regions[hasher->common.num_base64_regions]
             .length = length;
         hasher->common.num_base64_regions++;
