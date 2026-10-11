@@ -125,6 +125,17 @@ function(brotli_add_rust_library target type lib)
       set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_exports}")
     endif()
     set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${BROTLI_RUST_ARCHIVE}")
+    # The precompiled Rust `core` carries DWARF; like the C Release build,
+    # ship no debug info unless a debug configuration is requested.
+    if (NOT MSVC)
+      if (APPLE)
+        set(_strip_flag "-Wl,-S")
+      else()
+        set(_strip_flag "-Wl,--strip-debug")
+      endif()
+      target_link_options(${target} PRIVATE
+        "$<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>>:${_strip_flag}>")
+    endif()
   else()
     # The archive content is replaced by the Rust archive after "building"
     # the placeholder, so that install(TARGETS) etc. work as usual.
@@ -132,6 +143,12 @@ function(brotli_add_rust_library target type lib)
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND "${CMAKE_COMMAND}" -E copy "${BROTLI_RUST_ARCHIVE}" "$<TARGET_FILE:${target}>"
       COMMENT "Installing Rust archive as ${lib}")
+    if (CMAKE_STRIP AND NOT MSVC)
+      # Drop DWARF of the precompiled Rust `core` (see above).
+      add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND "$<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>,${CMAKE_COMMAND};-E;true,${CMAKE_STRIP};-S;$<TARGET_FILE:${target}>>"
+        COMMAND_EXPAND_LISTS)
+    endif()
   endif()
   add_dependencies(${target} brotli_rust_archive)
 endfunction()

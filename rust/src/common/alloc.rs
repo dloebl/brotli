@@ -86,7 +86,7 @@ impl Allocator {
     /// True if these are the default (malloc / free) callbacks.
     #[inline]
     pub fn is_default(&self) -> bool {
-        self.alloc_func as usize == default_alloc_func as usize && self.free_func as usize == default_free_func as usize
+        self.alloc_func as *const () == default_alloc_func as *const () && self.free_func as *const () == default_free_func as *const ()
     }
 
     /// Raw free through the client callback.
