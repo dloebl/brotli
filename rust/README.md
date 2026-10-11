@@ -99,11 +99,14 @@ See [`PORTING.md`](PORTING.md) for the porting conventions.
   excess precision (32-bit x86 without SSE2 math) can make slightly different
   encoder decisions, i.e. the C library's own output already differs between
   platforms in rare cases. Decoding is unaffected (integer only).
-* **Pointer width.** As in C, the encoder's match scoring depends on
-  `sizeof(size_t)` and the SIMD hashers (qualities 5–7) only exist on 64-bit
-  targets; the decoder uses the 64-bit bit reader on 64-bit targets. The Rust
-  port mirrors this, so it matches the C library *of the same target*
-  (verified on aarch64 macOS/Linux and i686 Linux).
+* **Target dependence.** As in C, the encoder's match scoring depends on
+  `sizeof(size_t)`, and C's "64-bit" code paths (`BROTLI_64_BITS`: the
+  decoder's 64-bit bit reader and the encoder's SIMD hashers used at
+  qualities 5–7) are enabled on the architectures C recognizes as 64-bit
+  (x86-64, AArch64, PowerPC64, RISC-V 64, LoongArch64, MIPS64 — not e.g.
+  s390x). The Rust port mirrors this, so it matches the C library *of the
+  same target*; verified on aarch64 macOS and Linux, x86-64 (Rosetta),
+  i686 Linux (32-bit) and s390x Linux (big-endian).
 * **Compilers.** Differential fuzzing on Linux revealed that clang 14 (LLVM 14)
   miscompiles part of `c/enc/literal_cost.c` on aarch64 (see
   [`fuzz/README.md`](fuzz/README.md)); C libraries built with it produce
