@@ -108,6 +108,12 @@ See [`PORTING.md`](PORTING.md) for the porting conventions.
   miscompiles part of `c/enc/literal_cost.c` on aarch64 (see
   [`fuzz/README.md`](fuzz/README.md)); C libraries built with it produce
   different (valid) output at qualities 10/11. The Rust port is not affected.
+* **Memory use.** `BROTLI_PARAM_MAX_BASE64_REGIONS` accepts any `uint32_t`
+  and C allocates that many region records up front (up to 64 GiB, exiting
+  on failure); the Rust port allocates only as many as a metablock can use.
+  Apart from that (and the instance objects themselves), allocation sizes
+  and their order through the client allocator match C; the decoder's
+  allocation sequence is identical (verified with failure injection).
 * **Invalid input values** behave like in C, e.g. passing an operation that is
   not a `BrotliEncoderOperation` to `BrotliEncoderCompressStream` loops forever
   in both.

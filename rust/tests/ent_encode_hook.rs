@@ -1061,9 +1061,10 @@ fn hooked_encoder_matches_c() {
 /// Regression scenario: with BROTLI_PARAM_BASE64_MODE, a duplicated base64
 /// block is emitted as a copy and its region start is moved into that copy,
 /// so the forced base64 literal block covers following non-base64 literals.
-/// The C reference then emits those literals with zero-length codes (reading
-/// uninitialized `bits_` entries) and produces a stream that does not
-/// round-trip.  The Rust port must still match the C output bit for bit.
+/// The C reference used to emit those literals with zero-length codes
+/// (reading uninitialized `bits_` entries), producing a stream that did not
+/// round-trip; fixed in both implementations (the region keeps describing
+/// its own literals).
 #[test]
 fn base64_dupe_region_matches_c() {
     let mut rng = Rng::new(42);
@@ -1115,13 +1116,10 @@ fn base64_dupe_region_matches_c() {
             st.first_failures
         );
         assert!(st.events[3] > 0 && st.events[6] > 0);
-        // When the C stream is corrupt, the C encoder has read uninitialized
-        // memory (`bits_` of zero-depth symbols), so its output depends on
-        // heap garbage; the Rust port behaves as if that memory were zero.
-        if dec.as_deref() == Some(&data[..]) || st.failures == 0 {
-            assert_eq!(st.failures, 0);
-        } else {
-            eprintln!("  (C output depends on uninitialized memory here; mismatch not counted)");
-        }
+        // The C reference used to produce corrupt streams here (reading
+        // uninitialized `bits_` of zero-depth symbols); fixed in both
+        // implementations, so the streams must round trip and match.
+        assert_eq!(dec.as_deref(), Some(&data[..]), "q{}: stream does not round trip", q);
+        assert_eq!(st.failures, 0);
     }
 }
