@@ -11,6 +11,8 @@ pub fn log2_floor_non_zero(n: usize) -> u32 {
     31 ^ (n as u32).leading_zeros()
 }
 
+/// `LOG_2_INV` (only used by C on platforms without `log2`).
+#[allow(clippy::approx_constant)]
 pub const LOG_2_INV: f64 = 1.4426950408889634;
 
 /// `FastLog2`: faster logarithm for small integers, with log2(0) == 0.

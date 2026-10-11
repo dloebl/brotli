@@ -26,11 +26,17 @@ extern "C" {
 }
 
 /// `BrotliDefaultAllocFunc`.
+///
+/// # Safety
+/// Plain `malloc`; the result must be released with [`default_free_func`].
 pub unsafe extern "C" fn default_alloc_func(_opaque: *mut c_void, size: usize) -> *mut c_void {
     malloc(size)
 }
 
 /// `BrotliDefaultFreeFunc`.
+///
+/// # Safety
+/// `address` must be NULL or come from [`default_alloc_func`].
 pub unsafe extern "C" fn default_free_func(_opaque: *mut c_void, address: *mut c_void) {
     free(address)
 }
@@ -98,6 +104,9 @@ unsafe extern "C" fn noop_free(_opaque: *mut c_void, _address: *mut c_void) {}
 
 /// Mirrors `BrotliBootstrapAlloc`: allocates the instance object itself.
 /// Both callbacks NULL → malloc; both set → custom; mixed → failure (NULL).
+///
+/// # Safety
+/// Calls the client allocator; the returned memory is uninitialized.
 pub unsafe fn bootstrap_alloc(size: usize, alloc_func: BrotliAllocFunc, free_func: BrotliFreeFunc, opaque: *mut c_void) -> *mut c_void {
     match (alloc_func, free_func) {
         (None, None) => malloc(size),
