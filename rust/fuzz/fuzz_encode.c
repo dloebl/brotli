@@ -46,7 +46,7 @@ static uint8_t* make_data(FuzzRng* rng, uint8_t kind, uint8_t param, const uint8
                           size_t cap, size_t* out_size) {
   ByteVec v = {NULL, 0, 0, 0};
   size_t i;
-  switch (kind % 5) {
+  switch (kind % 6) {
     case 0:
     default:
       vec_append(&v, raw, raw_size < cap ? raw_size : cap);
@@ -85,6 +85,38 @@ static uint8_t* make_data(FuzzRng* rng, uint8_t kind, uint8_t param, const uint8
         vec_append(&v, &b, 1);
       }
       if (v.size + raw_size <= cap) vec_append(&v, raw, raw_size);
+      break;
+    }
+    case 5: { /* base64 regions (some repeated) embedded in text */
+      static const char kB64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      uint8_t* region = NULL;
+      size_t region_len = 0;
+      size_t target = (size_t)(param + 1) * 2048;
+      if (target > cap) target = cap;
+      while (v.size < target) {
+        uint64_t r = rng_below(rng, 8);
+        if (r < 3) {
+          const char* w = kWords[rng_below(rng, sizeof(kWords) / sizeof(kWords[0]))];
+          vec_append(&v, (const uint8_t*)w, strlen(w));
+        } else if (r < 5 && raw_size) {
+          size_t off = rng_below(rng, raw_size);
+          size_t len = rng_below(rng, raw_size - off + 1);
+          vec_append(&v, raw + off, len > 256 ? 256 : len);
+        } else {
+          vec_append(&v, (const uint8_t*)";base64,", 8);
+          if (region == NULL || rng_below(rng, 3) == 0) {
+            size_t k;
+            free(region);
+            region_len = rng_below(rng, 4096);
+            region = (uint8_t*)malloc(region_len + 3);
+            for (k = 0; k < region_len; ++k) region[k] = (uint8_t)kB64[rng_below(rng, 64)];
+            for (k = 0; k < rng_below(rng, 3); ++k) region[region_len++] = '=';
+          }
+          vec_append(&v, region, region_len); /* repeated region */
+          vec_append(&v, (const uint8_t*)"\">", 2);
+        }
+      }
+      free(region);
       break;
     }
     case 4: { /* long runs / low entropy */
