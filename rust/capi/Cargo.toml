@@ -1,0 +1,15 @@
+[package]
+name = "brotli-capi"
+version = "1.2.0"
+edition = "2021"
+license = "MIT"
+description = "C ABI static library of the Rust brotli implementation (libbrotlicommon/dec/enc replacement)."
+publish = false
+
+[lib]
+name = "brotli_capi"
+path = "lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+brotli = { path = "..", default-features = false, features = ["ffi"] }

@@ -7,6 +7,7 @@
 //! `c/include/brotli/`, so it can be used as a drop-in replacement for
 //! `libbrotlicommon`, `libbrotlidec` and `libbrotlienc`.
 
+#![cfg_attr(not(test), no_std)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_memcpy)]

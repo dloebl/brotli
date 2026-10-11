@@ -131,18 +131,46 @@ if (MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-file(GLOB_RECURSE BROTLI_COMMON_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/common/*.c)
-file(GLOB_RECURSE BROTLI_DEC_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/dec/*.c)
-file(GLOB_RECURSE BROTLI_ENC_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/enc/*.c)
+# The libraries are implemented in Rust (rust/); the original C sources in
+# c/{common,dec,enc} are kept as the reference implementation (used for
+# differential testing) and can still be built with -DBROTLI_USE_RUST=OFF.
+option(BROTLI_USE_RUST "Build the libraries from the Rust implementation (OFF: C reference implementation)" ON)
+option(BROTLI_BUILD_ENC_EXTRA_API "Export the extra encoder API from the shared library" OFF)
 
-add_library(brotlicommon ${BROTLI_COMMON_SOURCES})
-add_library(brotlidec ${BROTLI_DEC_SOURCES})
-add_library(brotlienc ${BROTLI_ENC_SOURCES})
+if (BROTLI_USE_RUST)
+  message(STATUS "Building the Rust implementation of brotli")
+  include(rust/cmake/BrotliRust.cmake)
+  if (BUILD_SHARED_LIBS)
+    set(_brotli_lib_type SHARED)
+  else()
+    set(_brotli_lib_type STATIC)
+  endif()
+  brotli_add_rust_library(brotlicommon ${_brotli_lib_type} brotlicommon)
+  brotli_add_rust_library(brotlidec ${_brotli_lib_type} brotlidec)
+  brotli_add_rust_library(brotlienc ${_brotli_lib_type} brotlienc)
+  if (BROTLI_BUILD_FOR_PACKAGE)
+    brotli_add_rust_library(brotlicommon-static STATIC brotlicommon)
+    brotli_add_rust_library(brotlidec-static STATIC brotlidec)
+    brotli_add_rust_library(brotlienc-static STATIC brotlienc)
+  endif()
+else()
+  message(STATUS "Building the C implementation of brotli")
+  file(GLOB_RECURSE BROTLI_COMMON_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/common/*.c)
+  file(GLOB_RECURSE BROTLI_DEC_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/dec/*.c)
+  file(GLOB_RECURSE BROTLI_ENC_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/enc/*.c)
 
-if (BROTLI_BUILD_FOR_PACKAGE)
-  add_library(brotlicommon-static STATIC ${BROTLI_COMMON_SOURCES})
-  add_library(brotlidec-static STATIC ${BROTLI_DEC_SOURCES})
-  add_library(brotlienc-static STATIC ${BROTLI_ENC_SOURCES})
+  add_library(brotlicommon ${BROTLI_COMMON_SOURCES})
+  add_library(brotlidec ${BROTLI_DEC_SOURCES})
+  add_library(brotlienc ${BROTLI_ENC_SOURCES})
+
+  if (BROTLI_BUILD_FOR_PACKAGE)
+    add_library(brotlicommon-static STATIC ${BROTLI_COMMON_SOURCES})
+    add_library(brotlidec-static STATIC ${BROTLI_DEC_SOURCES})
+    add_library(brotlienc-static STATIC ${BROTLI_ENC_SOURCES})
+  endif()
+  if (BROTLI_BUILD_ENC_EXTRA_API)
+    target_compile_definitions(brotlienc PRIVATE BROTLI_BUILD_ENC_EXTRA_API)
+  endif()
 endif()
 
 # Older CMake versions does not understand INCLUDE_DIRECTORIES property.
@@ -299,7 +327,7 @@ if (NOT BROTLI_DISABLE_TESTS AND BROTLI_BUILD_TOOLS)
 
   foreach(INPUT ${COMPATIBILITY_INPUTS})
     string(REGEX REPLACE "([a-zA-Z0-9\\.]+)\\.compressed(\\.[0-9]+)?$" "\\1" UNCOMPRESSED_INPUT "${INPUT}")
-    if (EXISTS ${UNCOMPRESSED_INPUT})
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${UNCOMPRESSED_INPUT}")
       add_test(NAME "${BROTLI_TEST_PREFIX}compatibility/${INPUT}"
         COMMAND "${CMAKE_COMMAND}"
           -DBROTLI_WRAPPER=${BROTLI_WRAPPER}

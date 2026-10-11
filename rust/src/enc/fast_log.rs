@@ -19,5 +19,11 @@ pub fn fast_log2(v: usize) -> f64 {
     if v < BROTLI_LOG2_TABLE_SIZE {
         return K_BROTLI_LOG2_TABLE[v];
     }
-    (v as f64).log2()
+    // SAFETY: plain libm call (the C library uses the same `log2`).
+    unsafe { log2(v as f64) }
+}
+
+extern "C" {
+    /// libm `log2` (bit-identical to what the C implementation uses).
+    fn log2(x: f64) -> f64;
 }

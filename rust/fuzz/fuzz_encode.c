@@ -183,6 +183,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
   mode = h[3] % 4;
 
   cap = quality >= 10 ? ((size_t)192 << 10) : quality >= 4 ? ((size_t)1 << 21) : ((size_t)4 << 20);
+  if (h[20] & 3) cap = (size_t)64 << 10; /* tiny input chunks: keep it fast */
   data = make_data(&rng, h[16], h[17], fuzz + in.pos, fuzz_size - in.pos, cap, &data_size);
 
   /* --- Pure functions. --- */
@@ -377,8 +378,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
       if (out_chunk == 0 && !take_mode && rng_below(&rng, 3) == 0) out_chunk = max_out;
 
       if (wild && rng_below(&rng, 64) == 0) {
-        /* Out-of-protocol call: random op and input size. */
-        op = (int)rng_below(&rng, 5);
+        /* Out-of-protocol call: random (valid) op and input size.  NB: op
+           values outside BrotliEncoderOperation make the C encoder loop
+           forever (and the Rust port identically), so they are not used. */
+        op = (int)rng_below(&rng, 4);
         in_chunk = rng_below(&rng, data_size - pos + 1);
         in_base = data + pos;
         is_meta = 0;

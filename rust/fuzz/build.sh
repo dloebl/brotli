@@ -33,9 +33,9 @@ TARGET=$(rustc -vV | sed -n 's/^host: //p')
 RUSTFLAGS="-Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-level=4 \
 -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-pc-table \
 -Cllvm-args=-sanitizer-coverage-trace-compares -Cforce-frame-pointers=yes" \
-  cargo build --manifest-path "$RUST_DIR/Cargo.toml" --lib --profile fuzz --target "$TARGET" \
+  cargo build --manifest-path "$RUST_DIR/Cargo.toml" -p brotli-capi --profile fuzz --target "$TARGET" \
   --target-dir "$FUZZ_DIR/target"
-RUST_LIB="$FUZZ_DIR/target/$TARGET/fuzz/libbrotli.a"
+RUST_LIB="$FUZZ_DIR/target/$TARGET/fuzz/libbrotli_capi.a"
 
 # 2. Reference C library, all exported symbols renamed to ref_*.
 CFLAGS="-O2 -g -fno-omit-frame-pointer -ffp-contract=off -fsanitize=$SAN $SYSROOT"

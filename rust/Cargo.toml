@@ -10,7 +10,10 @@ rust-version = "1.70"
 [lib]
 name = "brotli"
 path = "src/lib.rs"
-crate-type = ["rlib", "staticlib"]
+crate-type = ["rlib"]
+
+[workspace]
+members = ["capi"]
 
 [features]
 default = ["ffi"]
