@@ -109,7 +109,8 @@ See [`PORTING.md`](PORTING.md) for the porting conventions.
   i686 Linux (32-bit) and s390x Linux (big-endian). (C detects AArch64 via
   `__aarch64__`/`__ARM_ARCH`, which MSVC does not define, so MSVC-built C on
   Windows ARM64 uses the 32-bit code paths; the Rust port behaves like the
-  clang-built C library there. Compressed output is the same either way.)
+  clang-built C library there; in our tests the SIMD and non-SIMD hashers
+  produced identical output.)
 * **Compilers.** Differential fuzzing on Linux revealed that clang 14 (LLVM 14)
   miscompiles part of `c/enc/literal_cost.c` on aarch64 (see
   [`fuzz/README.md`](fuzz/README.md)); C libraries built with it produce
