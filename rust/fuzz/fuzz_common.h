@@ -130,7 +130,9 @@ static void* fuzz_failing_alloc(void* opaque, size_t size) {
 static void* fuzz_garbage_alloc(void* opaque, size_t size) {
   AllocStats* st = (AllocStats*)opaque;
   void* p = malloc(size ? size : 1);
-  if (p) memset(p, 0xA5, size);
+  /* Fill (at most) the first MiB: enough to catch reliance on uninitialized
+     memory without touching every page of huge (lazily used) buffers. */
+  if (p) memset(p, 0xA5, size < ((size_t)1 << 20) ? size : ((size_t)1 << 20));
   if (st && p) { st->live++; st->total++; }
   return p;
 }

@@ -8,6 +8,7 @@
 import logging
 import os
 import re
+import subprocess
 
 import setuptools
 from setuptools import errors, modified
@@ -56,7 +57,27 @@ class BuildExt(build_ext.build_ext):
       filenames.extend(ext.depends)
     return filenames
 
+  def build_rust_archive(self):
+    """Builds the Rust implementation (C ABI static archive) with cargo."""
+    cargo = os.environ.get("CARGO", "cargo")
+    target_dir = os.path.abspath(os.path.join(self.build_temp, "rust-target"))
+    cmd = [
+        cargo, "build", "--release", "-p", "brotli-capi",
+        "--manifest-path", os.path.join(CURR_DIR, "rust", "Cargo.toml"),
+        "--target-dir", target_dir,
+    ]
+    LOGGER.info("building the Rust brotli library: %s", " ".join(cmd))
+    subprocess.check_call(cmd)
+    if self.compiler.compiler_type == "msvc":
+      return os.path.join(target_dir, "release", "brotli_capi.lib")
+    return os.path.join(target_dir, "release", "libbrotli_capi.a")
+
   def build_extension(self, ext):
+    if getattr(ext, "brotli_rust", False):
+      ext.extra_objects = (ext.extra_objects or []) + [self.build_rust_archive()]
+      if self.compiler.compiler_type != "msvc":
+        ext.libraries = (ext.libraries or []) + ["m"]
+      self.force = True
     if ext.sources is None or not isinstance(ext.sources, (list, tuple)):
       raise errors.DistutilsSetupError(
           f"in 'ext_modules' option (extension '{ext.name}'), "
@@ -164,8 +185,19 @@ PACKAGE_DIR = {"": "python"}
 PY_MODULES = ["brotli"]
 
 USE_SYSTEM_BROTLI = bool_from_environ("USE_SYSTEM_BROTLI")
+# Link the extension against the Rust implementation of brotli (rust/), built
+# with cargo, instead of compiling the C sources.
+USE_RUST_BROTLI = bool_from_environ("USE_RUST_BROTLI")
 
-if USE_SYSTEM_BROTLI:
+if USE_RUST_BROTLI and not USE_SYSTEM_BROTLI:
+  brotli_extension = setuptools.Extension(
+      "_brotli",
+      sources=["python/_brotli.c"],
+      include_dirs=["c/include"],
+  )
+  brotli_extension.brotli_rust = True
+  EXT_MODULES = [brotli_extension]
+elif USE_SYSTEM_BROTLI:
   import pkgconfig
 
   REQUIRED_BROTLI_SYSTEM_LIBRARIES = [
