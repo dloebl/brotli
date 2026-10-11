@@ -45,5 +45,13 @@ Differences found so far, all fixed:
   onto the following literals, which were forced into the base64 block and
   written with zero-length codes (reading uninitialized memory) — the stream
   did not decode.
+* **Compiler bug (not a difference of the port):** on aarch64 Linux,
+  Debian clang 14.0.6 at `-O1` and above miscompiles `UTF8Position()` inlined
+  into the sliding window loop of `EstimateBitCostsForLiteralsUTF8()`
+  (`c/enc/literal_cost.c`, UBSan-clean code): the C reference then computes
+  different literal costs and emits a different (valid) stream at qualities
+  10/11 (`regressions/encode/clang14-aarch64-literal-cost-miscompile`). gcc,
+  clang 14 at `-O0`, Apple clang 21 and LLVM 23 at all optimization levels
+  agree with the Rust port. Use a different compiler for the C reference.
 * Harness: operation values outside `BrotliEncoderOperation` make both
   encoders loop forever; the harness only uses valid values.

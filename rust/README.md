@@ -104,6 +104,10 @@ See [`PORTING.md`](PORTING.md) for the porting conventions.
   targets; the decoder uses the 64-bit bit reader on 64-bit targets. The Rust
   port mirrors this, so it matches the C library *of the same target*
   (verified on aarch64 macOS/Linux and i686 Linux).
+* **Compilers.** Differential fuzzing on Linux revealed that clang 14 (LLVM 14)
+  miscompiles part of `c/enc/literal_cost.c` on aarch64 (see
+  [`fuzz/README.md`](fuzz/README.md)); C libraries built with it produce
+  different (valid) output at qualities 10/11. The Rust port is not affected.
 * **Invalid input values** behave like in C, e.g. passing an operation that is
   not a `BrotliEncoderOperation` to `BrotliEncoderCompressStream` loops forever
   in both.

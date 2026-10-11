@@ -991,7 +991,10 @@ fn hasher_size_matches_c() {
         };
         let mut out = [0usize; 4];
         hasher_size(&params, false, 1000, &mut out);
-        if t == 0 || t == 1 || t == 7 {
+        let simd = t == 58 || t == 59 || t == 68;
+        if t == 0 || t == 1 || t == 7 || (simd && !brotli::enc::quality::HAVE_SIMD_HASHERS) {
+            // No such hasher (the SIMD hashers only exist on 64-bit targets,
+            // like BROTLI_MAX_SIMD_QUALITY in C).
             assert_eq!(out, [0; 4]);
         } else {
             assert!(out[0] > 0, "type {}", t);
