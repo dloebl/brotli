@@ -466,15 +466,14 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
 
     if (finished && ok && protocol_ok && !stream_offset_used && !produced.overflow && !consumed.overflow &&
         quality >= 0) {
-      /* NB: with BROTLI_PARAM_BASE64_MODE the C reference may produce broken
-         streams (it reads uninitialized memory, see rust/fuzz/README.md);
-         the Rust output must always round trip. */
+      /* Both decoders must reproduce the input.  (Base64 mode used to
+         produce broken streams for repeated base64 regions; fixed in both
+         implementations.) */
       check_roundtrip(&rust_api, produced.data, produced.size, consumed.data, consumed.size, large_window,
                       dicts, dict_sizes, num_attached);
-      if (!base64_used) {
-        check_roundtrip(&ref_api, produced.data, produced.size, consumed.data, consumed.size, large_window,
-                        dicts, dict_sizes, num_attached);
-      }
+      check_roundtrip(&ref_api, produced.data, produced.size, consumed.data, consumed.size, large_window,
+                      dicts, dict_sizes, num_attached);
+      (void)base64_used;
     }
   }
 

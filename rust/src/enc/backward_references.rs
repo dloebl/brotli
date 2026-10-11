@@ -257,7 +257,13 @@ fn create_backward_references<H: HasherImpl, const COMPOUND: bool>(
                     *num_literals += insert_length;
                     insert_length = 0;
                     position = scan_pos;
-                    common.base64_regions[matched_region_idx].start_literal_pos = start_pos;
+                    // NB: the matched region must keep describing its own
+                    // literals: the duplicate is emitted as a copy (no
+                    // literals).  The C library used to move the region into
+                    // the copy, which mapped it onto the following
+                    // (non-base64) literals and produced invalid streams
+                    // (fixed in c/enc/backward_references_inc.h as well).
+                    let _ = matched_region_idx;
                     apply_random_heuristics = position + 2 * copy_len + random_heuristics_window_size;
                     if common.num_base64_regions < params.max_base64_regions {
                         next_base64_pos = find_next_base64_trigger(ringbuffer, ringbuffer_mask, position, pos_end);

@@ -126,8 +126,11 @@ static BROTLI_NOINLINE void EXPORT_FN(CreateBackwardReferences)(
         *num_literals += insert_length;
         insert_length = 0;
         position = scan_pos;
-        hasher->common.base64_regions[matched_region_idx].start_literal_pos =
-            start_pos;
+        /* NB: the matched region must keep describing its own literals: the
+           duplicate is emitted as a copy (no literals), and a region moved
+           into a copy would be mapped onto the literals following it, forcing
+           non-base64 literals into the base64 block (invalid stream). */
+        (void)matched_region_idx;
         apply_random_heuristics =
             position + 2 * copy_len + random_heuristics_window_size;
         if (hasher->common.num_base64_regions < params->max_base64_regions) {
