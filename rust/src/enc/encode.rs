@@ -1379,7 +1379,11 @@ impl BrotliEncoderState {
         seal_bits += 6;
         // If we have already created storage, then append to it.  Storage is
         // valid until next block is being compressed.
-        let destination = if self.next_out_ != NextOut::Null {
+        // NB: only append to pending output: if all output has been
+        // consumed, `next_out_` may point to the end of `tiny_buf_` (after a
+        // metadata block was drained through it); the C library used to
+        // write past `tiny_buf_` there (fixed in c/enc/encode.c as well).
+        let destination = if self.next_out_ != NextOut::Null && self.available_out_ != 0 {
             self.next_out_.advance(self.available_out_)
         } else {
             self.next_out_ = NextOut::Tiny(0);

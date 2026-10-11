@@ -1375,8 +1375,11 @@ static void InjectBytePaddingBlock(BrotliEncoderState* s) {
   seal |= 0x6u << seal_bits;
   seal_bits += 6;
   /* If we have already created storage, then append to it.
-     Storage is valid until next block is being compressed. */
-  if (s->next_out_) {
+     Storage is valid until next block is being compressed.
+     NB: only append to pending output; if all output has been consumed,
+     next_out_ may point to the end of tiny_buf_ (after a metadata block was
+     drained through it), and appending there would write past tiny_buf_. */
+  if (s->next_out_ && s->available_out_ != 0) {
     destination = s->next_out_ + s->available_out_;
   } else {
     destination = s->tiny_buf_.u8;

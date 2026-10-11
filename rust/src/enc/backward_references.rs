@@ -452,7 +452,11 @@ fn create_backward_references<H: HasherImpl, const COMPOUND: bool>(
             }
         }
     }
-    insert_length += pos_end - position;
+    // NB: `position` may exceed `pos_end` here (by up to 7): when a copy
+    // jumps over a found `;base64,` trigger, the next iteration treats the
+    // current position as the trigger and skips 8 bytes.  C relies on
+    // `size_t` wrap-around to net the insert length out; do the same.
+    insert_length = insert_length.wrapping_add(pos_end.wrapping_sub(position));
     *last_insert_len = insert_length;
     *num_commands += n_commands;
 }
@@ -733,7 +737,11 @@ fn create_backward_references_opt<H: HasherImpl, const COMPOUND: bool>(
             }
         }
     }
-    insert_length += pos_end - position;
+    // NB: `position` may exceed `pos_end` here (by up to 7): when a copy
+    // jumps over a found `;base64,` trigger, the next iteration treats the
+    // current position as the trigger and skips 8 bytes.  C relies on
+    // `size_t` wrap-around to net the insert length out; do the same.
+    insert_length = insert_length.wrapping_add(pos_end.wrapping_sub(position));
     *last_insert_len = insert_length;
     *num_commands += n_commands;
 }

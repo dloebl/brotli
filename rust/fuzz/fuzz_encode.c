@@ -173,6 +173,8 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
   size_t pos = 0;
   size_t iterations = 0;
 
+  static int trace = -1;
+  if (trace < 0) trace = getenv("FUZZ_TRACE") != NULL;
   if (fuzz_size < sizeof(h)) return 0;
   for (i = 0; i < sizeof(h); ++i) h[i] = in_u8(&in);
   rng.s = (uint64_t)h[18] | ((uint64_t)h[19] << 8) | ((uint64_t)h[23] << 16);
@@ -400,6 +402,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
       ai_a = ai_b = in_chunk;
       ni_a = ni_b = in_base;
       ao_a = ao_b = out_chunk;
+      if (trace) {
+        fprintf(stderr, "call #%zu: op=%d avail_in=%zu avail_out=%zu%s\n", iterations, op, in_chunk, out_chunk,
+                is_meta ? " (metadata)" : "");
+      }
       ra = rust_api.EncoderCompressStream(a, (BrotliEncoderOperation)op, &ai_a, &ni_a, &ao_a, &no_a,
                                           use_total ? &total_a : NULL);
       rb = ref_api.EncoderCompressStream(b, (BrotliEncoderOperation)op, &ai_b, &ni_b, &ao_b, &no_b,
@@ -422,10 +428,15 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
         pos += in_chunk - ai_a;
       }
 
+      if (trace) {
+        fprintf(stderr, "  -> r=%d consumed=%zu produced=%zu more=%d finished=%d\n", ra, in_chunk - ai_a,
+                out_chunk - ao_a, ref_api.EncoderHasMoreOutput(b), ref_api.EncoderIsFinished(b));
+      }
       if (take_mode && rng_below(&rng, 2)) {
         size_t sz_a = rng_chunk(&rng, (size_t)1 << 20), sz_b = sz_a;
         const uint8_t* pa = rust_api.EncoderTakeOutput(a, &sz_a);
         const uint8_t* pb = ref_api.EncoderTakeOutput(b, &sz_b);
+        if (trace) fprintf(stderr, "  TakeOutput -> %zu\n", sz_b);
         CHECK_EQ("TakeOutput size", sz_a, sz_b);
         CHECK_EQ("TakeOutput null", pa == NULL, pb == NULL);
         CHECK_MEM("TakeOutput data", pa, pb, sz_a);
