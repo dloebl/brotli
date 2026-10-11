@@ -160,7 +160,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
   int protocol_ok = 1;   /* only valid call sequences so far */
   int stream_offset_used = 0;
   int base64_used = 0;
-  AllocStats stats_a = {0, 0}, stats_b = {0, 0};
+  AllocStats stats_a = {0, 0, 0}, stats_b = {0, 0, 0};
   BrotliEncoderState* a;
   BrotliEncoderState* b;
   BrotliEncoderPreparedDictionary* prep_a[MAX_PREPARED];
@@ -184,6 +184,15 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
 
   cap = quality >= 10 ? ((size_t)192 << 10) : quality >= 4 ? ((size_t)1 << 21) : ((size_t)4 << 20);
   if (h[20] & 3) cap = (size_t)64 << 10; /* tiny input chunks: keep it fast */
+  {
+    /* FUZZ_ENCODE_CAP=<bytes>: limit the data size (more, smaller runs). */
+    static long env_cap = -1;
+    if (env_cap < 0) {
+      const char* e = getenv("FUZZ_ENCODE_CAP");
+      env_cap = e ? atol(e) : 0;
+    }
+    if (env_cap > 0 && cap > (size_t)env_cap) cap = (size_t)env_cap;
+  }
   data = make_data(&rng, h[16], h[17], fuzz + in.pos, fuzz_size - in.pos, cap, &data_size);
 
   /* --- Pure functions. --- */

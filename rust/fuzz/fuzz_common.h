@@ -95,6 +95,7 @@ static inline uint32_t in_u32(FuzzInput* in) {
 typedef struct {
   long live;
   long total;
+  long fail_at; /* if > 0: the fail_at-th allocation fails (returns NULL) */
 } AllocStats;
 
 static void* fuzz_zalloc(void* opaque, size_t size) {
@@ -108,6 +109,19 @@ static void fuzz_free(void* opaque, void* p) {
   AllocStats* st = (AllocStats*)opaque;
   if (st && p) st->live--;
   free(p);
+}
+
+/* Zero-filling allocator with failure injection. */
+static void* fuzz_failing_alloc(void* opaque, size_t size) {
+  AllocStats* st = (AllocStats*)opaque;
+  void* p;
+  if (st->fail_at > 0 && st->total + 1 == st->fail_at) {
+    st->total++;
+    return NULL;
+  }
+  p = calloc(1, size ? size : 1);
+  if (p) { st->live++; st->total++; }
+  return p;
 }
 
 /* Allocator that fills memory with garbage (tests that nothing depends on

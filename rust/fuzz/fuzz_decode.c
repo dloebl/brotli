@@ -55,7 +55,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   size_t num_dicts = 0;
   const uint8_t* stream;
   size_t stream_size;
-  AllocStats stats_a = {0, 0}, stats_b = {0, 0};
+  AllocStats stats_a = {0, 0, 0}, stats_b = {0, 0, 0};
   BrotliDecoderState* a;
   BrotliDecoderState* b;
   MetaLog log_a = {0xCBF29CE484222325ull, 0}, log_b = {0xCBF29CE484222325ull, 0};
@@ -101,13 +101,26 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   /* --- Streaming API. --- */
-  if (flags & 16) {
+  if (mode & 16) {
+    /* Allocation failure injection: the n-th allocation fails on both. */
+    stats_a.fail_at = stats_b.fail_at = 1 + (long)((mode >> 5) + rng_below(&rng, 24));
+    a = rust_api.DecoderCreateInstance(fuzz_failing_alloc, fuzz_free, &stats_a);
+    b = ref_api.DecoderCreateInstance(fuzz_failing_alloc, fuzz_free, &stats_b);
+    CHECK_EQ("create (allocation failure)", a == NULL, b == NULL);
+    CHECK_EQ("allocation count", stats_a.total, stats_b.total);
+    if (!a) {
+      CHECK_EQ("leaked allocations (rust)", stats_a.live, 0);
+      CHECK_EQ("leaked allocations (c)", stats_b.live, 0);
+      return 0;
+    }
+  } else if (flags & 16) {
     /* Rust: garbage-filling custom allocator; C: zero-filling allocator. */
     a = rust_api.DecoderCreateInstance(fuzz_garbage_alloc, fuzz_free, &stats_a);
+    b = ref_api.DecoderCreateInstance(fuzz_zalloc, fuzz_free, &stats_b);
   } else {
     a = rust_api.DecoderCreateInstance(NULL, NULL, NULL);
+    b = ref_api.DecoderCreateInstance(fuzz_zalloc, fuzz_free, &stats_b);
   }
-  b = ref_api.DecoderCreateInstance(fuzz_zalloc, fuzz_free, &stats_b);
   CHECK_TRUE("create", a && b);
 
   {
@@ -172,6 +185,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     CHECK_EQ("metadata callbacks count", log_a.count, log_b.count);
     CHECK_EQ("metadata callbacks hash", log_a.hash, log_b.hash);
     compare_state(a, b);
+    if (mode & 16) CHECK_EQ("allocation count", stats_a.total, stats_b.total);
     pos += in_chunk - avail_in_a;
     total_produced += out_chunk - avail_out_a;
 
