@@ -50,6 +50,7 @@ pub type Reg = u32;
 
 /// `BROTLI_64_BITS`.
 pub const BROTLI_64_BITS: bool = core::mem::size_of::<Reg>() == 8;
+const _: () = assert!(BROTLI_64_BITS == crate::common::platform::BROTLI_64_BITS);
 
 /// `BROTLI_UNALIGNED_READ_FAST` (platform.h).
 #[cfg(all(

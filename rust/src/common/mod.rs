@@ -4,6 +4,7 @@ pub mod alloc;
 pub mod constants;
 pub mod context;
 pub mod dictionary;
+pub mod platform;
 pub mod shared_dictionary;
 pub mod tables;
 pub mod transform;

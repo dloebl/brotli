@@ -119,16 +119,14 @@ pub fn literal_spree_length_for_sparse_search(params: &BrotliEncoderParams) -> u
 }
 
 /// `BROTLI_MAX_SIMD_QUALITY` / `BROTLI_MAX_RECOMMENDED_SIMD_QUALITY` from
-/// `platform.h`: defined iff `BROTLI_TZCNT64` is available, i.e. on 64-bit
-/// targets.  MSVC x64 recommends 7, everything else 6.
-#[cfg(target_pointer_width = "64")]
-pub const BROTLI_MAX_SIMD_QUALITY: Option<i32> = Some(7);
-#[cfg(not(target_pointer_width = "64"))]
-pub const BROTLI_MAX_SIMD_QUALITY: Option<i32> = None;
+/// `platform.h`: defined iff `BROTLI_TZCNT64` is available, i.e. iff
+/// `BROTLI_64_BITS` (see [`crate::common::platform::BROTLI_64_BITS`]).
+/// MSVC x64 recommends 7, everything else 6.
+pub const BROTLI_MAX_SIMD_QUALITY: Option<i32> = if crate::common::platform::BROTLI_64_BITS { Some(7) } else { None };
 
-#[cfg(all(target_pointer_width = "64", target_env = "msvc", target_arch = "x86_64"))]
+#[cfg(all(target_env = "msvc", target_arch = "x86_64"))]
 pub const BROTLI_MAX_RECOMMENDED_SIMD_QUALITY: i32 = 7;
-#[cfg(not(all(target_pointer_width = "64", target_env = "msvc", target_arch = "x86_64")))]
+#[cfg(not(all(target_env = "msvc", target_arch = "x86_64")))]
 pub const BROTLI_MAX_RECOMMENDED_SIMD_QUALITY: i32 = 6;
 
 /// Whether the SIMD hashers (H58, H59, H68) are compiled in.
