@@ -47,8 +47,18 @@ int main(void) {
   printf("#![allow(clippy::all)]\n\n");
 
   emit_u8("CONTEXT_LOOKUP_TABLE", _kBrotliContextLookupTable, 2048);
+  printf("/// Value of [`CONTEXT_LOOKUP_TABLE`] usable in constant expressions.\n");
+  printf("pub const CONTEXT_LOOKUP_TABLE_VALUE: [u8; 2048] = {\n");
+  printf("    let mut t = [0u8; 2048];\n    let mut i = 0;\n");
+  printf("    while i < 2048 {\n        t[i] = CONTEXT_LOOKUP[i];\n        i += 1;\n    }\n    t\n};\n");
+  printf("const CONTEXT_LOOKUP: [u8; 2048] = [");
+  {
+    size_t j;
+    for (j = 0; j < 2048; ++j) printf("%s%u,", (j % 16) ? " " : "\n    ", _kBrotliContextLookupTable[j]);
+  }
+  printf("\n];\n\n");
 
-  printf("pub static PREFIX_CODE_RANGES: [(u16, u8); 26] = [");
+  printf("pub const PREFIX_CODE_RANGES: [(u16, u8); 26] = [");
   for (i = 0; i < 26; ++i) {
     printf("%s(%u, %u),", (i % 6) ? " " : "\n    ",
            _kBrotliPrefixCodeRanges[i].offset, _kBrotliPrefixCodeRanges[i].nbits);
@@ -60,7 +70,7 @@ int main(void) {
   emit_u16("TRANSFORM_PREFIX_SUFFIX_MAP", kPrefixSuffixMap,
            sizeof(kPrefixSuffixMap) / sizeof(kPrefixSuffixMap[0]));
   emit_u8("TRANSFORMS_DATA", kTransformsData, sizeof(kTransformsData));
-  printf("pub static TRANSFORMS_CUTOFF: [i16; 10] = [");
+  printf("pub const TRANSFORMS_CUTOFF: [i16; 10] = [");
   for (i = 0; i < 10; ++i) printf("%s%d", i ? ", " : "", kBrotliTransforms.cutOffTransforms[i]);
   printf("];\n\n");
 

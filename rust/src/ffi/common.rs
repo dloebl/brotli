@@ -9,7 +9,7 @@ use core::ffi::{c_int, c_void};
 
 use crate::common::alloc::{bootstrap_alloc, default_alloc_func, default_free_func, Allocator, BrotliAllocFunc, BrotliFreeFunc};
 use crate::common::constants::{BrotliPrefixCodeRange, BROTLI_NUM_BLOCK_LEN_SYMBOLS, K_BROTLI_PREFIX_CODE_RANGES};
-use crate::common::context::CONTEXT_LOOKUP_TABLE;
+use crate::common::tables::CONTEXT_LOOKUP_TABLE_VALUE;
 use crate::common::dictionary::{BrotliDictionary, BROTLI_DICTIONARY};
 use crate::common::shared_dictionary::SharedDictionary;
 use crate::common::transform::{transform_dictionary_word_raw, BrotliTransforms, BROTLI_TRANSFORMS};
@@ -30,7 +30,7 @@ pub fn to_brotli_bool(b: bool) -> BrotliBool {
 
 /// `_kBrotliContextLookupTable` (context.h).
 #[no_mangle]
-pub static _kBrotliContextLookupTable: [u8; 2048] = CONTEXT_LOOKUP_TABLE;
+pub static _kBrotliContextLookupTable: [u8; 2048] = CONTEXT_LOOKUP_TABLE_VALUE;
 
 /// `_kBrotliPrefixCodeRanges` (constants.h).
 #[no_mangle]
