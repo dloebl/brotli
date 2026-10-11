@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+ - **libbrotlicommon, libbrotlidec and libbrotlienc are now implemented in
+   Rust** (`rust/`). The libraries are drop-in replacements: same public
+   headers, library names, SONAMEs, exported symbols and behavior
+   (byte-identical encoder output; identical streaming decoder behavior),
+   verified by differential fuzzing against the C implementation. The C
+   implementation is kept in `c/` as reference (`-DBROTLI_USE_RUST=OFF`).
+ - build: CMake builds the libraries with cargo; Python: `USE_RUST_BROTLI=1`
+   links the extension against the Rust library.
+
+### Fixed
+ - encoder: out-of-bounds write of the flush padding past the internal 16-byte
+   buffer (quality 0/1, after a metadata block was drained via
+   `BrotliEncoderTakeOutput`), which broke all subsequent calls
+ - encoder: streams produced with `BROTLI_PARAM_BASE64_MODE` could not be
+   decoded when a base64 region was repeated
+ - build: CMake compatibility tests were never registered
+
 ## [1.2.0] - 2025-10-27
 
 ### SECURITY

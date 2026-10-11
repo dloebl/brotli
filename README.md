@@ -56,13 +56,23 @@ See [Bazel](https://www.bazel.build/)
 
 #### CMake
 
+The libraries (`libbrotlicommon`, `libbrotlidec`, `libbrotlienc`) are
+implemented in Rust (see [rust/README.md](rust/README.md)); they are API- and
+ABI-compatible drop-in replacements of the C libraries, with the same headers
+(`c/include/brotli`), library names, SONAMEs and exported symbols, and
+byte-identical output. Building them requires a Rust toolchain
+([rustup](https://rustup.rs/)) in addition to a C compiler (for the `brotli`
+command line tool).
+
 The basic commands to build and install brotli are:
 
     $ mkdir out && cd out
     $ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./installed ..
     $ cmake --build . --config Release --target install
 
-You can use other [CMake](https://cmake.org/) configuration.
+You can use other [CMake](https://cmake.org/) configuration. Configure with
+`-DBROTLI_USE_RUST=OFF` to build the original C implementation in `c/`, which
+is kept as the reference implementation for differential testing.
 
 #### Python
 
