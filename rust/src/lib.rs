@@ -8,6 +8,8 @@
 //! `libbrotlicommon`, `libbrotlidec` and `libbrotlienc`.
 
 #![cfg_attr(not(test), no_std)]
+// Many doc comments are ported C comments using `a[i]`-style notation.
+#![allow(rustdoc::broken_intra_doc_links, rustdoc::bare_urls)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_memcpy)]
