@@ -1,0 +1,45 @@
+[package]
+name = "brotli"
+version = "1.2.0"
+edition = "2021"
+license = "MIT"
+description = "Brotli compression library implemented in Rust, ABI/API compatible with the reference C library (libbrotlicommon, libbrotlidec, libbrotlienc)."
+publish = false
+rust-version = "1.70"
+
+[lib]
+name = "brotli"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
+
+[features]
+default = ["ffi"]
+# Export the C ABI (BrotliEncoder*, BrotliDecoder*, BrotliSharedDictionary*, ...).
+ffi = []
+# Development only: compile the reference C implementation (../c) with all
+# exported symbols renamed to `ref_*` (see tools/ref_prefix.h) and link it,
+# so tests can compare the Rust port against it.  Also compiles the C shims
+# in tests/c_shims/*.c (which may use C internals).
+c-reference = ["dep:cc"]
+
+[build-dependencies]
+cc = { version = "1", optional = true }
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+codegen-units = 1
+debug = false
+lto = false
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+# Used by the differential fuzzers: optimized but with debug assertions and
+# overflow checks enabled, so any divergence from C semantics traps early.
+[profile.fuzz]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
