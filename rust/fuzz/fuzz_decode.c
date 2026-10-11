@@ -189,6 +189,23 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     pos += in_chunk - avail_in_a;
     total_produced += out_chunk - avail_out_a;
 
+    if ((flags & 128) && rng_below(&rng, 16) == 0) {
+      /* Mid-stream parameter changes must be rejected identically. */
+      uint32_t p = (uint32_t)rng_below(&rng, 3);
+      uint32_t v = (uint32_t)rng_below(&rng, 3);
+      CHECK_EQ("SetParameter(mid-stream)", rust_api.DecoderSetParameter(a, (BrotliDecoderParameter)p, v),
+               ref_api.DecoderSetParameter(b, (BrotliDecoderParameter)p, v));
+    }
+    if ((flags & 32) && rng_below(&rng, 32) == 0) {
+      /* Metadata callbacks may be (un)set at any time. */
+      if (rng_below(&rng, 2)) {
+        rust_api.DecoderSetMetadataCallbacks(a, NULL, NULL, NULL);
+        ref_api.DecoderSetMetadataCallbacks(b, NULL, NULL, NULL);
+      } else {
+        rust_api.DecoderSetMetadataCallbacks(a, meta_start, meta_chunk, &log_a);
+        ref_api.DecoderSetMetadataCallbacks(b, meta_start, meta_chunk, &log_b);
+      }
+    }
     if ((flags & 8) && rng_below(&rng, 2)) {
       size_t sz_a = rng_chunk(&rng, (size_t)1 << 20), sz_b = sz_a;
       const uint8_t* pa = rust_api.DecoderTakeOutput(a, &sz_a);
