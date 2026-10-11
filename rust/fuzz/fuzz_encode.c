@@ -140,6 +140,44 @@ static void compare_state(BrotliEncoderState* a, BrotliEncoderState* b) {
   CHECK_EQ("IsFinished", rust_api.EncoderIsFinished(a), ref_api.EncoderIsFinished(b));
 }
 
+/* Decodes `stream` with both decoders; returns the (common) result.  The
+   outputs and results of both decoders must be identical. */
+static int decode_both(const uint8_t* stream, size_t stream_size, int large_window,
+                       const uint8_t* const* dicts, const size_t* dict_sizes, size_t num_dicts,
+                       const uint8_t* expected, size_t expected_size) {
+  BrotliDecoderState* da = rust_api.DecoderCreateInstance(NULL, NULL, NULL);
+  BrotliDecoderState* db = ref_api.DecoderCreateInstance(NULL, NULL, NULL);
+  size_t ai = stream_size, bi = stream_size, produced = 0, i;
+  const uint8_t* ni = stream;
+  const uint8_t* mi = stream;
+  BrotliDecoderResult ra, rb;
+  rust_api.DecoderSetParameter(da, BROTLI_DECODER_PARAM_LARGE_WINDOW, large_window ? 1u : 0u);
+  ref_api.DecoderSetParameter(db, BROTLI_DECODER_PARAM_LARGE_WINDOW, large_window ? 1u : 0u);
+  for (i = 0; i < num_dicts; ++i) {
+    rust_api.DecoderAttachDictionary(da, BROTLI_SHARED_DICTIONARY_RAW, dict_sizes[i], dicts[i]);
+    ref_api.DecoderAttachDictionary(db, BROTLI_SHARED_DICTIONARY_RAW, dict_sizes[i], dicts[i]);
+  }
+  do {
+    size_t ao = OUT_BUF_SIZE, bo = OUT_BUF_SIZE;
+    uint8_t* no = out_a;
+    uint8_t* mo = out_b;
+    ra = rust_api.DecoderDecompressStream(da, &ai, &ni, &ao, &no, NULL);
+    rb = ref_api.DecoderDecompressStream(db, &bi, &mi, &bo, &mo, NULL);
+    CHECK_EQ("decode_both result", ra, rb);
+    CHECK_EQ("decode_both available_in", ai, bi);
+    CHECK_EQ("decode_both available_out", ao, bo);
+    CHECK_MEM("decode_both output", out_a, out_b, OUT_BUF_SIZE - ao);
+    if (produced + (OUT_BUF_SIZE - ao) <= expected_size) {
+      if (memcmp(out_a, expected + produced, OUT_BUF_SIZE - ao) != 0) ra = BROTLI_DECODER_RESULT_ERROR;
+    }
+    produced += OUT_BUF_SIZE - ao;
+  } while (ra == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT);
+  CHECK_EQ("decode_both error code", rust_api.DecoderGetErrorCode(da), ref_api.DecoderGetErrorCode(db));
+  rust_api.DecoderDestroyInstance(da);
+  ref_api.DecoderDestroyInstance(db);
+  return ra == BROTLI_DECODER_RESULT_SUCCESS && produced == expected_size;
+}
+
 /* Decodes `stream` with the given API and checks that it reproduces
    `expected`. */
 static void check_roundtrip(const BrotliApi* api, const uint8_t* stream, size_t stream_size,
@@ -192,6 +230,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
   int protocol_ok = 1;   /* only valid call sequences so far */
   int stream_offset_used = 0;
   int base64_used = 0;
+  int mid_stream_attach = 0;
   AllocStats stats_a = {0, 0, 0}, stats_b = {0, 0, 0};
   BrotliEncoderState* a;
   BrotliEncoderState* b;
@@ -464,6 +503,37 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
         fprintf(stderr, "  -> r=%d consumed=%zu produced=%zu more=%d finished=%d\n", ra, in_chunk - ai_a,
                 out_chunk - ao_a, ref_api.EncoderHasMoreOutput(b), ref_api.EncoderIsFinished(b));
       }
+      if (wild && rng_below(&rng, 32) == 0) {
+        /* Parameter changes after the first call must be rejected. */
+        uint32_t p = (uint32_t)rng_below(&rng, 16);
+        uint32_t v = (uint32_t)rng_below(&rng, 30);
+        CHECK_EQ("SetParameter(mid-stream)", rust_api.EncoderSetParameter(a, (BrotliEncoderParameter)p, v),
+                 ref_api.EncoderSetParameter(b, (BrotliEncoderParameter)p, v));
+      }
+      if ((h[21] & 0x40) && num_prepared < MAX_PREPARED && rng_below(&rng, 16) == 0) {
+        /* Prepared dictionaries may be attached mid-stream. */
+        size_t off = rng_below(&rng, data_size + 1);
+        size_t len = rng_below(&rng, data_size - off + 1);
+        dicts[num_prepared] = data + off;
+        dict_sizes[num_prepared] = len;
+        prep_a[num_prepared] = rust_api.EncoderPrepareDictionary(BROTLI_SHARED_DICTIONARY_RAW, len, data + off, 11,
+                                                                 NULL, NULL, NULL);
+        prep_b[num_prepared] = ref_api.EncoderPrepareDictionary(BROTLI_SHARED_DICTIONARY_RAW, len, data + off, 11,
+                                                                fuzz_zalloc, fuzz_free, NULL);
+        CHECK_EQ("PrepareDictionary(mid-stream) null", prep_a[num_prepared] == NULL, prep_b[num_prepared] == NULL);
+        if (prep_a[num_prepared]) {
+          BROTLI_BOOL ra2 = rust_api.EncoderAttachPreparedDictionary(a, prep_a[num_prepared]);
+          BROTLI_BOOL rb2 = ref_api.EncoderAttachPreparedDictionary(b, prep_b[num_prepared]);
+          CHECK_EQ("AttachPreparedDictionary(mid-stream)", ra2, rb2);
+          if (ra2) {
+            dicts[num_attached] = dicts[num_prepared];
+            dict_sizes[num_attached] = dict_sizes[num_prepared];
+            num_attached++;
+            mid_stream_attach = 1;
+          }
+          num_prepared++;
+        }
+      }
       if (take_mode && rng_below(&rng, 2)) {
         size_t sz_a = rng_chunk(&rng, (size_t)1 << 20), sz_b = sz_a;
         const uint8_t* pa = rust_api.EncoderTakeOutput(a, &sz_a);
@@ -496,7 +566,17 @@ int LLVMFuzzerTestOneInput(const uint8_t* fuzz, size_t fuzz_size) {
       }
     }
 
-    if (finished && ok && protocol_ok && !stream_offset_used && !produced.overflow && !consumed.overflow &&
+    /* NB: a dictionary attached mid-stream is only referenced by later
+       blocks, but the decoder needs all chunks from the start; the stream is
+       decodable with them, so the round trip is still checked. */
+    if (finished && ok && protocol_ok && mid_stream_attach && !stream_offset_used && !produced.overflow &&
+        !consumed.overflow) {
+      /* NB: a dictionary attached mid-stream changes the distance mapping
+         for later blocks, so the stream is not necessarily decodable with
+         all chunks attached up front; both decoders must agree, though. */
+      decode_both(produced.data, produced.size, large_window, dicts, dict_sizes, num_attached, consumed.data,
+                  consumed.size);
+    } else if (finished && ok && protocol_ok && !stream_offset_used && !produced.overflow && !consumed.overflow &&
         quality >= 0) {
       /* Both decoders must reproduce the input.  (Base64 mode used to
          produce broken streams for repeated base64 regions; fixed in both
