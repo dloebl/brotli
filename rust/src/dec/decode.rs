@@ -1490,7 +1490,7 @@ impl DecoderState {
             return true;
         }
         let new_size = self.new_ringbuffer_size as usize;
-        let mut rb = match Buf::try_new(&self.alloc, new_size.wrapping_add(K_RING_BUFFER_WRITE_AHEAD_SLACK)) {
+        let mut rb = match Buf::try_new_zeroed(&self.alloc, new_size.wrapping_add(K_RING_BUFFER_WRITE_AHEAD_SLACK)) {
             Some(b) => b,
             // Restore previous value.
             None => return false,

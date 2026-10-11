@@ -103,9 +103,9 @@ impl TagTables {
             block_mask: (block_size - 1) as u32,
             num_last_distances_to_check: hp.num_last_distances_to_check,
             block_bits: hp.block_bits as u32,
-            num: Buf::new(m, bucket_size),
-            tags: Buf::new(m, bucket_size * block_size),
-            buckets: Buf::new(m, bucket_size * block_size),
+            num: Buf::new_zeroed(m, bucket_size),
+            tags: Buf::new_zeroed(m, bucket_size * block_size),
+            buckets: Buf::new_zeroed(m, bucket_size * block_size),
         }
     }
 

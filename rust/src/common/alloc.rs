@@ -19,6 +19,7 @@ pub type BrotliAllocFunc = Option<unsafe extern "C" fn(opaque: *mut c_void, size
 pub type BrotliFreeFunc = Option<unsafe extern "C" fn(opaque: *mut c_void, address: *mut c_void)>;
 
 extern "C" {
+    fn calloc(count: usize, size: usize) -> *mut c_void;
     fn malloc(size: usize) -> *mut c_void;
     fn free(ptr: *mut c_void);
     fn exit(code: i32) -> !;
@@ -76,6 +77,12 @@ impl Allocator {
         (self.alloc_func)(self.opaque, size)
     }
 
+    /// True if these are the default (malloc / free) callbacks.
+    #[inline]
+    pub fn is_default(&self) -> bool {
+        self.alloc_func as usize == default_alloc_func as usize && self.free_func as usize == default_free_func as usize
+    }
+
     /// Raw free through the client callback.
     ///
     /// # Safety
@@ -104,6 +111,25 @@ pub unsafe fn bootstrap_alloc(size: usize, alloc_func: BrotliAllocFunc, free_fun
 pub fn oom_exit() -> ! {
     unsafe { exit(1) }
 }
+
+/// Types for which the all-zero bit pattern is a valid value equal to
+/// `Default::default()`.
+///
+/// # Safety
+/// Implementors must guarantee the above.
+pub unsafe trait Zeroable: Copy + Default {}
+unsafe impl Zeroable for u8 {}
+unsafe impl Zeroable for u16 {}
+unsafe impl Zeroable for u32 {}
+unsafe impl Zeroable for u64 {}
+unsafe impl Zeroable for usize {}
+unsafe impl Zeroable for i8 {}
+unsafe impl Zeroable for i16 {}
+unsafe impl Zeroable for i32 {}
+unsafe impl Zeroable for i64 {}
+unsafe impl Zeroable for isize {}
+unsafe impl Zeroable for f32 {}
+unsafe impl Zeroable for f64 {}
 
 /// Owned, fixed-length array allocated through an [`Allocator`].
 ///
@@ -141,6 +167,45 @@ impl<T: Copy + Default> Buf<T> {
             }
         }
         Some(Buf { ptr, len, alloc: *m, _marker: PhantomData })
+    }
+
+    /// Like [`Buf::try_new`], for types whose all-zero bit pattern is their
+    /// default value.  With the default allocator this uses `calloc`, so
+    /// large buffers are backed by lazily materialized zero pages (same
+    /// memory footprint as the C library's uninitialized `malloc`).
+    pub fn try_new_zeroed(m: &Allocator, len: usize) -> Option<Self>
+    where
+        T: Zeroable,
+    {
+        if len == 0 {
+            return Some(Self::empty());
+        }
+        let size = len.checked_mul(core::mem::size_of::<T>())?;
+        let raw = if m.is_default() {
+            unsafe { calloc(len, core::mem::size_of::<T>()) as *mut T }
+        } else {
+            let p = unsafe { m.alloc_raw(size) } as *mut T;
+            if !p.is_null() {
+                // SAFETY: `p` points to `size` writable bytes.
+                unsafe { core::ptr::write_bytes(p as *mut u8, 0, size) };
+            }
+            p
+        };
+        let ptr = NonNull::new(raw)?;
+        debug_assert!((raw as usize) % core::mem::align_of::<T>() == 0);
+        Some(Buf { ptr, len, alloc: *m, _marker: PhantomData })
+    }
+
+    /// [`Buf::try_new_zeroed`]; terminates the process on OOM.
+    #[inline]
+    pub fn new_zeroed(m: &Allocator, len: usize) -> Self
+    where
+        T: Zeroable,
+    {
+        match Self::try_new_zeroed(m, len) {
+            Some(b) => b,
+            None => oom_exit(),
+        }
     }
 
     /// Allocates `len` elements; terminates the process on OOM (encoder

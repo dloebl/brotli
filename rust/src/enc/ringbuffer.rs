@@ -88,7 +88,7 @@ impl RingBuffer {
     /// length plus some slack region before and after.  Fills the slack
     /// regions with zeros.
     fn init_buffer(&mut self, m: &MemoryManager, buflen: u32) {
-        let mut new_data: Buf<u8> = Buf::new(m, 2 + buflen as usize + SLACK_FOR_EIGHT_BYTE_HASHING_EVERYWHERE);
+        let mut new_data: Buf<u8> = Buf::new_zeroed(m, 2 + buflen as usize + SLACK_FOR_EIGHT_BYTE_HASHING_EVERYWHERE);
         if !self.data_.is_empty() {
             let n = 2 + self.cur_size_ as usize + SLACK_FOR_EIGHT_BYTE_HASHING_EVERYWHERE;
             new_data[..n].copy_from_slice(&self.data_[..n]);

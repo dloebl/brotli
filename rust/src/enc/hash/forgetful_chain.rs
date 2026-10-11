@@ -102,9 +102,9 @@ impl<const BUCKET_BITS: u32, const NUM_BANKS: usize, const BANK_BITS: u32, const
         HashForgetfulChain {
             free_slot_idx: [0; NUM_BANKS],
             max_hops: (if params.quality > 6 { 7usize } else { 8usize }).wrapping_shl((params.quality - 4) as u32),
-            addr: Buf::new(m, Self::BUCKET_SIZE),
-            head: Buf::new(m, Self::BUCKET_SIZE),
-            tiny_hash: Buf::new(m, 65536),
+            addr: Buf::new_zeroed(m, Self::BUCKET_SIZE),
+            head: Buf::new_zeroed(m, Self::BUCKET_SIZE),
+            tiny_hash: Buf::new_zeroed(m, 65536),
             banks: Buf::new(m, Self::BANK_SIZE * NUM_BANKS),
         }
     }

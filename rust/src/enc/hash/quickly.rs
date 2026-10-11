@@ -64,7 +64,7 @@ impl<const BUCKET_BITS: u32, const BUCKET_SWEEP_BITS: u32, const HASH_LEN: u32, 
     }
 
     fn new(m: &MemoryManager, _common: &HasherCommon, _params: &BrotliEncoderParams, _one_shot: bool, _input_size: usize) -> Self {
-        HashLongestMatchQuickly { buckets: Buf::new(m, Self::BUCKET_SIZE) }
+        HashLongestMatchQuickly { buckets: Buf::new_zeroed(m, Self::BUCKET_SIZE) }
     }
 
     fn prepare(&mut self, one_shot: bool, input_size: usize, data: &[u8]) {

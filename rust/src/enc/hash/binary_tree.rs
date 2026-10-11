@@ -284,7 +284,7 @@ impl HasherCore for HashToBinaryTree {
         let invalid_pos = 0usize.wrapping_sub(window_mask) as u32;
         HashToBinaryTree {
             window_mask,
-            buckets: Buf::new(m, BUCKET_SIZE),
+            buckets: Buf::new_zeroed(m, BUCKET_SIZE),
             invalid_pos,
             forest: LazyPrefix::new(m, 2 * num_nodes, invalid_pos),
         }

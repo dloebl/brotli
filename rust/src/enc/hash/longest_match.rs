@@ -144,9 +144,9 @@ impl HasherCore for HashLongestMatch {
             hash_shift: 32 - hp.bucket_bits,
             bucket_size,
             block_mask: (block_size - 1) as u32,
-            num: Buf::new(m, bucket_size),
+            num: Buf::new_zeroed(m, bucket_size),
             block_bits: hp.block_bits as u32,
-            buckets: Buf::new(m, bucket_size * block_size),
+            buckets: Buf::new_zeroed(m, bucket_size * block_size),
             num_last_distances_to_check: hp.num_last_distances_to_check,
         }
     }
@@ -361,9 +361,9 @@ impl HasherCore for HashLongestMatch64 {
             bucket_size,
             block_mask: (block_size - 1) as u32,
             num_last_distances_to_check: hp.num_last_distances_to_check,
-            num: Buf::new(m, bucket_size),
+            num: Buf::new_zeroed(m, bucket_size),
             block_bits: hp.block_bits as u32,
-            buckets: Buf::new(m, bucket_size * block_size),
+            buckets: Buf::new_zeroed(m, bucket_size * block_size),
         }
     }
 
