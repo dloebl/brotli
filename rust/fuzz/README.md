@@ -51,7 +51,7 @@ Differences found so far, all fixed:
   (`c/enc/literal_cost.c`, UBSan-clean code): the C reference then computes
   different literal costs and emits a different (valid) stream at qualities
   10/11 (`regressions/encode/clang14-aarch64-literal-cost-miscompile`). gcc,
-  clang 14 at `-O0`, Apple clang 21 and LLVM 23 at all optimization levels
+  clang 14 at `-O0`, clang 15–19, Apple clang 21 and LLVM 23 at all optimization levels
   agree with the Rust port. Use a different compiler for the C reference.
 * Harness: operation values outside `BrotliEncoderOperation` make both
   encoders loop forever; the harness only uses valid values.
